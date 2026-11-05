@@ -1,5 +1,92 @@
 #import "@preview/clean-print-cv:0.1.0": *
 
+// ansible-jobops override (roles/jobops/files/clean-print-cv-overrides.typ).
+// clean-print-cv 0.1.0 wraps each experience entry in block(breakable: false),
+// so an entry taller than the space left on a page jumps whole to the next page
+// and leaves the page under "Professional Experience" blank. Redefine the entry
+// as breakable, keeping the role, company and first bullet together so a header
+// is never stranded at the bottom of a page. Same styling as the package.
+#let experience-entry(exp) = {
+  let bullet(item) = block(inset: (left: 6pt, bottom: 1.5pt))[
+    #bullet-marker(text(size: small-size, fill: body-color)[#item])
+  ]
+  let highlights = exp.highlights
+  block(width: 100%, breakable: true, inset: (left: 2pt, bottom: 1pt))[
+    #block(width: 100%, breakable: false)[
+      // Role + Period
+      #grid(
+        columns: (1fr, auto),
+        align: (left, right),
+        text(size: body-size, weight: "bold", fill: body-color)[#exp.role],
+        text(size: small-size, fill: muted)[#exp.period],
+      )
+      // Company + Location
+      #grid(
+        columns: (1fr, auto),
+        align: (left, right),
+        text(size: small-size, fill: accent, weight: "semibold")[#exp.company],
+        text(size: small-size, fill: muted, style: "italic")[#exp.location],
+      )
+      #v(2pt)
+      #if highlights.len() > 0 { bullet(highlights.first()) }
+    ]
+    #for item in highlights.slice(calc.min(1, highlights.len())) { bullet(item) }
+  ]
+  v(3pt)
+}
+
+// The package's cv-experience calls its own experience-entry, so redefine it too.
+#let cv-experience(experience) = {
+  section-heading("Professional Experience")
+  for exp in experience {
+    experience-entry(exp)
+  }
+}
+
+// JobOps passes empty GitHub and website fields as [] and an empty location as
+// "", and the package's header prints a separator for each, leaving stray bars
+// in the contact row. Redefine the header to skip empty fields. Same styling as
+// the package.
+#let cv-header(personal) = {
+  // Name
+  align(center)[
+    #text(
+      size: name-size,
+      weight: "bold",
+      fill: primary,
+      tracking: 1.5pt,
+    )[#upper(personal.name)]
+  ]
+  v(2pt)
+  // Title
+  align(center)[
+    #text(
+      size: title-size,
+      fill: muted,
+      style: "italic",
+    )[#personal.title]
+  ]
+  v(5pt)
+  line(length: 100%, stroke: 0.8pt + primary)
+  v(4pt)
+  // Contact row
+  let contacts = (
+    personal.email,
+    personal.phone,
+    personal.location,
+    personal.linkedin,
+    personal.github,
+    personal.at("website", default: ""),
+  ).filter(item => item != "" and item != [])
+  align(center)[
+    #set text(size: contact-size, fill: muted)
+    #contacts.join(contact-sep)
+  ]
+  v(1pt)
+  line(length: 100%, stroke: 0.3pt + rule-color)
+}
+
+
 #let source = json(__RESUME_DATA_PATH__)
 
 #let with-default(value, fallback) = {
